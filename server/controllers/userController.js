@@ -1,5 +1,5 @@
-import imagekit from "../configs/imageKit";
-import User from "../models/User";
+import imagekit from "../configs/imageKit.js";
+import User from "../models/User.js";
 import fs from "fs";
 
 //get user data by using userId
