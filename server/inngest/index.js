@@ -1,62 +1,148 @@
 import { Inngest } from "inngest";
 import User from "../models/User.js";
+import mongoose from "mongoose";
 
 // Create a client to send and receive events
 export const inngest = new Inngest({ id: "sparklink-app" });
 
-//Inngest function to save user data to a database
+// Helper function to ensure DB connection
+const ensureDbConnection = async () => {
+    if (mongoose.connection.readyState === 0) {
+        console.log('Connecting to MongoDB...');
+        await mongoose.connect(`${process.env.MONGODB_URL}/sparklink`);
+        console.log('MongoDB connected');
+    }
+};
+
+// Inngest function to save user data to database
 const syncUserCreation = inngest.createFunction(
     {id: 'sync-user-from-clerk'},
     {event: 'clerk/user.created'},
-    async ({event}) => {
-        const {id, first_name, last_name, email_addresses, image_url} = event.data;
-        let username = email_addresses[0].email_address.split('@')[0];
+    async ({event, step}) => {
+        return await step.run('create-user-in-db', async () => {
+            try {
+                // Ensure database connection
+                await ensureDbConnection();
+                
+                console.log('Clerk webhook - User Created:', event.data);
+                
+                const {id, first_name, last_name, email_addresses, image_url} = event.data;
+                
+                // Check if user already exists
+                const existingUser = await User.findById(id);
+                if (existingUser) {
+                    console.log('User already exists in database');
+                    return { success: true, message: 'User already exists', userId: id };
+                }
+                
+                // Validate required data
+                if (!email_addresses || email_addresses.length === 0) {
+                    console.error('No email addresses found');
+                    throw new Error('Email address is required');
+                }
+                
+                let username = email_addresses[0].email_address.split('@')[0];
 
-        //checks availability of username
-        const user = await User.findOne({username});
+                // Check availability of username
+                const userWithSameUsername = await User.findOne({username});
 
-        if (user) {
-            username = username + Math.floor(Math.random() * 10000);
-        }
+                if (userWithSameUsername) {
+                    username = username + Math.floor(Math.random() * 10000);
+                }
 
-        const userData = {
-            _id: id, 
-            email: email_addresses[0].email_address,
-            full_name: first_name + " " + last_name,
-            profile_picture: image_url,
-            username
-        }
-        await User.create(userData);
+                const userData = {
+                    _id: id, 
+                    email: email_addresses[0].email_address,
+                    full_name: `${first_name || ''} ${last_name || ''}`.trim() || 'User',
+                    profile_picture: image_url || '',
+                    username,
+                    bio: 'hey there! I am using sparklink.',
+                    location: '',
+                    followers: [],
+                    following: [],
+                    connections: []
+                }
+                
+                const newUser = await User.create(userData);
+                console.log('User created successfully:', newUser._id);
+                
+                return { success: true, userId: newUser._id };
+            } catch (error) {
+                console.error('Error in syncUserCreation:', error);
+                throw error;
+            }
+        });
     }
 )
 
-//Inngest Function to update user data in database
+// Inngest Function to update user data in database
 const syncUserUpdation = inngest.createFunction(
     {id: 'update-user-with-clerk'},
     {event: 'clerk/user.updated'},
-    async ({event}) => {
-        const {id, first_name, last_name, email_addresses, image_url} = event.data;
+    async ({event, step}) => {
+        return await step.run('update-user-in-db', async () => {
+            try {
+                // Ensure database connection
+                await ensureDbConnection();
+                
+                console.log('Clerk webhook - User Updated:', event.data);
+                
+                const {id, first_name, last_name, email_addresses, image_url} = event.data;
 
-        const updatedUserData = {
-            email: email_addresses[0].email_address,
-            full_name: first_name + ' ' + last_name,
-            profile_picture: image_url
-        }
-        await User.findByIdAndUpdate(id, updatedUserData);
+                const updatedUserData = {
+                    email: email_addresses[0].email_address,
+                    full_name: `${first_name || ''} ${last_name || ''}`.trim() || 'User',
+                    profile_picture: image_url || ''
+                }
+                
+                const updatedUser = await User.findByIdAndUpdate(id, updatedUserData, {new: true});
+                
+                if (updatedUser) {
+                    console.log('User updated successfully:', updatedUser._id);
+                    return { success: true, userId: updatedUser._id };
+                } else {
+                    console.log('User not found for update');
+                    return { success: false, message: 'User not found' };
+                }
+            } catch (error) {
+                console.error('Error in syncUserUpdation:', error);
+                throw error;
+            }
+        });
     }
 )
 
-//Inngest Function to delete user data in database
+// Inngest Function to delete user data in database
 const syncUserDeletion = inngest.createFunction(
     {id: 'delete-user-from-clerk'},
     {event: 'clerk/user.deleted'},
-    async ({event}) => {
-        const {id} = event.data;
-        await User.findByIdAndDelete(id);
+    async ({event, step}) => {
+        return await step.run('delete-user-from-db', async () => {
+            try {
+                // Ensure database connection
+                await ensureDbConnection();
+                
+                console.log('Clerk webhook - User Deleted:', event.data);
+                
+                const {id} = event.data;
+                const deletedUser = await User.findByIdAndDelete(id);
+                
+                if (deletedUser) {
+                    console.log('User deleted successfully:', id);
+                    return { success: true, userId: id };
+                } else {
+                    console.log('User not found for deletion');
+                    return { success: false, message: 'User not found' };
+                }
+            } catch (error) {
+                console.error('Error in syncUserDeletion:', error);
+                throw error;
+            }
+        });
     }
 )
 
-// Create an empty array where we'll export future Inngest functions
+// Export functions for Inngest
 export const functions = [
     syncUserCreation,
     syncUserUpdation,
