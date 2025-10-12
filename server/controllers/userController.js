@@ -1,3 +1,4 @@
+import { connection } from "mongoose";
 import Connection from "../models/Connection.js";
 import User from "../models/User.js";
 import { createUserFromClerk, uploadToImageKit } from "../utils/userUtils.js";
@@ -234,6 +235,25 @@ export const sendConnectionRequest = async (req, res) => {
 
         return res.json({success: false, message: 'connection request pending'});
     } catch (error) {
+        res.json({success: false, message: error.message});
+    }
+}
+
+//get user connections
+export const getUserConnections = async (req, res) => {
+    try {
+        const {userId} = req.auth();
+        const user = await User.findById(userId).populate('connections followers following');
+
+        const connections = user.connections;
+        const followers = user.followers;
+        const following = user.following;
+
+        const pendingConnections = (await Connection.find({to_user_id: userId, status: 'pending'}).populate('from_user_id')).map(connection=>connection.from_user_id);
+
+        res.json({success: true, connections, followers, following, pendingConnections});
+    } catch (error) {
+        console.log(error);
         res.json({success: false, message: error.message});
     }
 }
