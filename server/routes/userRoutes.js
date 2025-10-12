@@ -1,9 +1,12 @@
 import express from 'express';
 import { protect } from '../middlewares/auth.js';
 import { 
+    acceptConnectionRequest,
     discoverUsers, 
     followUser, 
+    getUserConnections, 
     getUserData, 
+    sendConnectionRequest, 
     unfollowUser, 
     updateUserData 
 } from '../controllers/userController.js';
@@ -12,16 +15,6 @@ import User from '../models/User.js';
 import { createUserFromClerk, organizeUploadedFiles } from '../utils/userUtils.js';
 
 const userRouter = express.Router();
-
-// Debug route
-userRouter.get('/debug', protect, (req, res) => {
-    res.json({
-        success: true,
-        auth: req.auth,
-        userId: req.auth?.userId,
-        sessionClaims: req.auth?.sessionClaims
-    });
-});
 
 // Sync user from Clerk
 userRouter.post('/sync-from-clerk', protect, async (req, res) => {
@@ -46,16 +39,6 @@ userRouter.post('/sync-from-clerk', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Sync error:', error);
-        res.json({ success: false, message: error.message });
-    }
-});
-
-// Get all users (admin/debug)
-userRouter.get('/all-users', protect, async (req, res) => {
-    try {
-        const users = await User.find({}).select('_id username email full_name');
-        res.json({ success: true, count: users.length, users });
-    } catch (error) {
         res.json({ success: false, message: error.message });
     }
 });
@@ -86,15 +69,12 @@ const handleFileUpload = (req, res, next) => {
 // User routes
 userRouter.get('/data', protect, getUserData);
 userRouter.post('/update', protect, handleFileUpload, updateUserData);
-userRouter.post('/test-upload', protect, handleFileUpload, (req, res) => {
-    res.json({
-        success: true,
-        files: req.files,
-        body: req.body
-    });
-});
+
 userRouter.post('/discover', protect, discoverUsers);
 userRouter.post('/follow', protect, followUser);
 userRouter.post('/unfollow', protect, unfollowUser);
+userRouter.post('/connect', protect, sendConnectionRequest);
+userRouter.post('/accept', protect, acceptConnectionRequest);
+userRouter.post('/connections', protect, getUserConnections);
 
 export default userRouter;
