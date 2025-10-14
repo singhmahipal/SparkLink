@@ -1,4 +1,4 @@
-import { connection } from "mongoose";
+import mongoose from "mongoose";
 import Connection from "../models/Connection.js";
 import User from "../models/User.js";
 import { createUserFromClerk, uploadToImageKit } from "../utils/userUtils.js";
