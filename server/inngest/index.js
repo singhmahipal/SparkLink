@@ -1,6 +1,6 @@
 import { Inngest } from "inngest";
 import User from "../models/User.js";
-import mongoose, { connection } from "mongoose";
+import mongoose from "mongoose";
 import Connection from "../models/Connection.js";
 import sendEmail from "../configs/nodeMailer.js";
 
@@ -144,7 +144,7 @@ const syncUserDeletion = inngest.createFunction(
     }
 )
 
-//inngest function to send reminder when a new connection request is added
+// Inngest function to send reminder when a new connection request is added
 const sendNewConnectionRequestReminder = inngest.createFunction(
     {id: "send-new-connection-request-reminder"},
     {event: "app/connection-request"},
@@ -173,6 +173,7 @@ const sendNewConnectionRequestReminder = inngest.createFunction(
             </div>`;
             
             await sendEmail({to: connection.to_user_id.email, subject, body});
+            console.log('Initial connection request email sent');
             
             return { message: 'Initial email sent' };
         });
@@ -188,7 +189,7 @@ const sendNewConnectionRequestReminder = inngest.createFunction(
             const connection = await Connection.findById(connectionId).populate('from_user_id to_user_id');
             
             if (!connection) {
-                console.log('Connection not found');
+                console.log('Connection not found for reminder');
                 return { message: 'Connection not found' };
             }
 
@@ -208,13 +209,14 @@ const sendNewConnectionRequestReminder = inngest.createFunction(
             </div>`;
             
             await sendEmail({to: connection.to_user_id.email, subject, body});
+            console.log('Connection request reminder email sent');
             
             return { message: 'Reminder sent' };
         });
 
         return { message: 'Connection request flow completed' };
     }
-);
+)
 
 // Export functions for Inngest
 export const functions = [
