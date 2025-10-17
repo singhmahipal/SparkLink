@@ -151,8 +151,17 @@ const sendNewConnectionRequestReminder = inngest.createFunction(
     async ({event, step}) => {
         const {connectionId} = event.data;
 
+        // First email - immediate notification
         await step.run('send-connection-request-mail', async () => {
+            await ensureDbConnection();
+            
             const connection = await Connection.findById(connectionId).populate('from_user_id to_user_id');
+            
+            if (!connection) {
+                console.log('Connection not found');
+                return { message: 'Connection not found' };
+            }
+            
             const subject = 'New Connection Request';
             const body = `
             <div style="font-family: Arial, sans-serif; padding: 20px;">
@@ -162,34 +171,50 @@ const sendNewConnectionRequestReminder = inngest.createFunction(
                 <br/>
                 <p>Thanks, <br/>SparkLink - Stay Connected</p>
             </div>`;
-        })
-        await sendEmail({to: connection.to_user_id.email, subject, body})
+            
+            await sendEmail({to: connection.to_user_id.email, subject, body});
+            
+            return { message: 'Initial email sent' };
+        });
 
+        // Wait 24 hours
         const in24Hours = new Date(Date.now() + 24 * 60 * 60 * 1000);
         await step.sleepUntil("wait-24-hours", in24Hours);
+        
+        // Second email - reminder after 24 hours
         await step.run('send-connection-request-reminder', async () => {
+            await ensureDbConnection();
+            
             const connection = await Connection.findById(connectionId).populate('from_user_id to_user_id');
-
-            if (connection.status === 'accepted') {
-                return {message: 'already accepted'}
+            
+            if (!connection) {
+                console.log('Connection not found');
+                return { message: 'Connection not found' };
             }
 
-            const subject = 'New Connection Request';
+            if (connection.status === 'accepted') {
+                console.log('Connection already accepted, skipping reminder');
+                return { message: 'Already accepted' };
+            }
+
+            const subject = 'Reminder: New Connection Request';
             const body = `
             <div style="font-family: Arial, sans-serif; padding: 20px;">
                 <h2>Hi ${connection.to_user_id.full_name},</h2>
-                <p>You have a new connection request from ${connection.from_user_id.full_name} @${connection.from_user_id.username}</p>
+                <p>This is a reminder that you have a pending connection request from ${connection.from_user_id.full_name} @${connection.from_user_id.username}</p>
                 <p>Click <a href="${process.env.FRONTEND_URL}/connections" style="color: #10b981;">here</a> to accept or reject the request</p>
                 <br/>
                 <p>Thanks, <br/>SparkLink - Stay Connected</p>
-            </div>
-            `;
-        })
-        await sendEmail({to: connection.to_user_id.email, subject, body})
+            </div>`;
+            
+            await sendEmail({to: connection.to_user_id.email, subject, body});
+            
+            return { message: 'Reminder sent' };
+        });
 
-        return {message: 'reminder sent.'}
+        return { message: 'Connection request flow completed' };
     }
-)
+);
 
 // Export functions for Inngest
 export const functions = [
