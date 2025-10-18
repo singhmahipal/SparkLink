@@ -38,33 +38,67 @@ const storage = multer.diskStorage({
     }
 });
 
-// Configure multer with file filter and size limits
-const uploadConfig = multer({
+// Common image file filter
+const imageFileFilter = (req, file, cb) => {
+    console.log('File filter check:');
+    console.log('- fieldname:', file.fieldname);
+    console.log('- originalname:', file.originalname);
+    console.log('- mimetype:', file.mimetype);
+    
+    // Allow only image files
+    if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+    } else {
+        cb(new Error('Only image files are allowed!'), false);
+    }
+};
+
+// ========== USER PROFILE/COVER UPLOAD ==========
+const uploadUserConfig = multer({
     storage,
     limits: {
         fileSize: 5 * 1024 * 1024, // 5MB limit
         files: 2 // Maximum 2 files
     },
     fileFilter: (req, file, cb) => {
-        console.log('File filter check:');
-        console.log('- fieldname:', file.fieldname);
-        console.log('- originalname:', file.originalname);
-        console.log('- mimetype:', file.mimetype);
+        console.log('User upload - fieldname:', file.fieldname);
         
-        // Only allow specific field names
+        // Only allow profile and cover for user uploads
         if (!['profile', 'cover'].includes(file.fieldname)) {
             return cb(new Error(`Invalid field name: ${file.fieldname}. Only 'profile' and 'cover' are allowed.`));
         }
         
-        // Allow only image files
-        if (file.mimetype.startsWith('image/')) {
-            cb(null, true);
-        } else {
-            cb(new Error('Only image files are allowed!'), false);
-        }
+        imageFileFilter(req, file, cb);
     }
 });
 
-// Export upload configurations
-export const upload = uploadConfig;
-export const uploadAny = uploadConfig.any();
+// ========== POST IMAGES UPLOAD ==========
+const uploadPostConfig = multer({
+    storage,
+    limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB limit per file
+        files: 5 // Maximum 5 images per post
+    },
+    fileFilter: (req, file, cb) => {
+        console.log('Post upload - fieldname:', file.fieldname);
+        
+        // Only allow 'images' field for post uploads
+        if (file.fieldname !== 'images') {
+            return cb(new Error(`Invalid field name: ${file.fieldname}. Only 'images' is allowed for posts.`));
+        }
+        
+        imageFileFilter(req, file, cb);
+    }
+});
+
+// Export different upload configurations
+export const upload = uploadUserConfig;
+export const uploadAny = uploadUserConfig.any();
+
+// Export post-specific upload middleware
+export const uploadPostImages = uploadPostConfig;
+
+// Optional: Export individual middleware functions
+export const uploadSingleProfile = uploadUserConfig.single('profile');
+export const uploadSingleCover = uploadUserConfig.single('cover');
+export const uploadMultiplePostImages = uploadPostConfig.array('images', 5);

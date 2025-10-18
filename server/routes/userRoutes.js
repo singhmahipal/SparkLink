@@ -13,6 +13,7 @@ import {
 import { upload } from '../configs/multer.js';
 import User from '../models/User.js';
 import { createUserFromClerk, organizeUploadedFiles } from '../utils/userUtils.js';
+import { getUserProfiles } from '../controllers/postController.js';
 
 const userRouter = express.Router();
 
@@ -76,5 +77,6 @@ userRouter.post('/unfollow', protect, unfollowUser);
 userRouter.post('/connect', protect, sendConnectionRequest);
 userRouter.post('/accept', protect, acceptConnectionRequest);
 userRouter.post('/connections', protect, getUserConnections);
+userRouter.post("/profiles", getUserProfiles);
 
 export default userRouter;
