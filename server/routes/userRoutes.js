@@ -14,6 +14,7 @@ import { upload } from '../configs/multer.js';
 import User from '../models/User.js';
 import { createUserFromClerk, organizeUploadedFiles } from '../utils/userUtils.js';
 import { getUserProfiles } from '../controllers/postController.js';
+import { getUserRecentMessages } from '../controllers/messageController.js';
 
 const userRouter = express.Router();
 
@@ -78,5 +79,6 @@ userRouter.post('/connect', protect, sendConnectionRequest);
 userRouter.post('/accept', protect, acceptConnectionRequest);
 userRouter.post('/connections', protect, getUserConnections);
 userRouter.post("/profiles", getUserProfiles);
+userRouter.get('/recent-messages', protect, getUserRecentMessages);
 
 export default userRouter;

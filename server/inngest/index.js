@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import Connection from "../models/Connection.js";
 import sendEmail from "../configs/nodeMailer.js";
 import Story from "../models/Story.js";
+import Message from "../models/Message.js";
 
 // Create a client to send and receive events
 export const inngest = new Inngest({ id: "sparklink-app" });
@@ -235,11 +236,48 @@ const deleteStory = inngest.createFunction(
     }
 )
 
+const sendNotificationOfUnseenMessages = inngest.createFunction(
+    {id: 'send-unseen-messages-notifcation'},
+    {cron: 'TZ=America/New_York 0 9 * * *'}, //every day 9 am
+    async ({step}) => {
+        const messages = await Message.find({seen: false}).populate('to_user_id');
+        const unseenCount = {};
+
+        messages.map(message=> {
+            unseenCount[message.to_user_id] = (unseenCount[message.to_user_id] || 0) + 1;
+        })
+
+        for (const userId in unseenCount) {
+            const user = await User.findById(userId);
+            
+            const subject = `You have ${unseenCount[userId]} unseen messages`;
+
+            const body = `
+            <div style="font-family: sans-serif; padding: 20px;">
+                <h2>Hi ${user.full_name},</h2>
+                <p>you have ${unseenCount[userId]} unseen messages</p>
+                <p>click <a href="${process.env.FRONTEND_URL}/messages" style="color: #10b981;">here</a> to view them</p>
+                <br>
+                <p>Thanks, <br>SparkLink - stay connected</p>
+            </div>
+            `;
+
+            await sendEmail({
+                to: user.email,
+                subject,
+                body
+            })
+        }
+        return {message: 'Notification sent.'}
+    }
+)
+
 // Export functions for Inngest
 export const functions = [
     syncUserCreation,
     syncUserUpdation,
     syncUserDeletion,
     sendNewConnectionRequestReminder,
-    deleteStory
+    deleteStory,
+    sendNotificationOfUnseenMessages
 ];
