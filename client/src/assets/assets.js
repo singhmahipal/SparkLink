@@ -1,5 +1,5 @@
 import logo from './logo.svg'
-import sparklink from './sparklink.png'
+import sparklink from './sparklink.svg'
 import sample_cover from './sample_cover.jpg'
 import sample_profile from './sample_profile.jpg'
 import bgImage from './bgImage.png'
