@@ -78,12 +78,15 @@ export const addPost = async (req, res) => {
         });
 
         // Populate user data for response
-        await newPost.populate('user');
+        const populatedPost = await Post.findById(newPost._id)
+            .populate('user', 'full_name profile_picture username');
+
+        console.log('Created post with user:', populatedPost.user);
 
         res.status(201).json({ 
             success: true, 
             message: "Post created successfully",
-            post: newPost
+            post: populatedPost
         });
     } catch (error) {
         console.error('Add post error:', error);
@@ -130,10 +133,18 @@ export const getFeedPosts = async (req, res) => {
             ...(user.following || [])
         ];
 
-        // Fetch posts and sort by creation date (newest first)
+        console.log('Fetching posts for users:', userIds);
+
+        // Fetch posts and populate user
         const posts = await Post.find({ user: { $in: userIds } })
-            .populate('user', 'name profile_pic username') // Populate only needed fields
+            .populate('user', 'full_name profile_picture username')
             .sort({ createdAt: -1 }); 
+
+        // Debug log
+        console.log(`Found ${posts.length} posts`);
+        if (posts.length > 0) {
+            console.log('First post user data:', posts[0].user);
+        }
 
         res.status(200).json({ 
             success: true, 
@@ -179,7 +190,7 @@ export const likePost = async (req, res) => {
         }
 
         // Check if user already liked the post
-        // Convert ObjectId to string for comparison
+        // Convert to string for comparison (handles both String and ObjectId)
         const userLikedIndex = post.likes_count.findIndex(
             id => id.toString() === userId.toString()
         );
@@ -193,7 +204,7 @@ export const likePost = async (req, res) => {
                 success: true, 
                 message: 'Post unliked',
                 liked: false,
-                likes_count: post.likes_count.length
+                likes_count: post.likes_count
             });
         } else {
             // Like: Add user to likes
@@ -204,7 +215,7 @@ export const likePost = async (req, res) => {
                 success: true, 
                 message: 'Post liked', 
                 liked: true,
-                likes_count: post.likes_count.length
+                likes_count: post.likes_count
             });
         }
     } catch (error) {
@@ -216,20 +227,31 @@ export const likePost = async (req, res) => {
     }
 };
 
-//get user profiles
+// Get user profiles
 export const getUserProfiles = async (req, res) => {
     try {
         const {profileId} = req.body;
+        
+        console.log('Fetching profile for:', profileId);
+        
         const profile = await User.findById(profileId);
 
         if (!profile) {
             return res.json({success: false, message: "profile not found"});
         }
-        const posts = await Post.find({user: profileId}).populate('user');
+        
+        const posts = await Post.find({user: profileId})
+            .populate('user', 'full_name profile_picture username')
+            .sort({ createdAt: -1 });
+
+        console.log(`Found ${posts.length} posts for profile`);
+        if (posts.length > 0) {
+            console.log('First post user:', posts[0].user);
+        }
 
         res.json({success: true, profile, posts});
     } catch (error) {
-        console.log(error);
+        console.log('Get user profiles error:', error);
         res.json({success: false, message: error.message});
     }
 }

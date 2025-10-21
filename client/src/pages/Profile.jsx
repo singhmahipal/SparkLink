@@ -6,8 +6,15 @@ import UserProfileInfo from '../components/UserProfileInfo';
 import PostCard from '../components/PostCard';
 import moment from 'moment';
 import ProfileModal from '../components/ProfileModal';
+import { useSelector } from 'react-redux';
+import { useAuth } from '@clerk/clerk-react'; // ADDED
+import api from '../api/axios.js'; // ADDED
+import toast from 'react-hot-toast'; // ADDED
 
 const Profile = () => {
+
+  const currentUser = useSelector((state) => state.user.value);
+  const {getToken} = useAuth(); // ADDED
 
   const {profileId} = useParams();
 
@@ -16,14 +23,34 @@ const Profile = () => {
   const [activeTab, setActiveTab] = useState('posts');
   const [showEdit, setShowEdit] = useState(false);
 
-  const fetchUser = async () => {
-    setUser(dummyUserData);
-    setPosts(dummyPostsData);
+  const fetchUser = async (profileId) => {
+    const token = await getToken();
+    try {
+      // FIXED: Added leading slash to endpoint
+      const {data} = await api.post('/api/user/profiles', {profileId}, {headers: {Authorization: `Bearer ${token}`}})
+      if (data.success) {
+        // FIXED: Changed 'Profile' to 'profile' (check your backend response)
+        setUser(data.profile);
+        setPosts(data.posts);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+    
   }
 
   useEffect(() => {
-    fetchUser();
-  }, []);
+    if (profileId) {
+      fetchUser(profileId);  
+    } else {
+      // FIXED: Added check to ensure currentUser exists before accessing _id
+      if (currentUser?._id) {
+        fetchUser(currentUser._id);
+      }
+    }
+  }, [profileId, currentUser]);
 
   return user ? (
     <div className='relative h-full overflow-y-scroll bg-gray-50 p-6'>
@@ -60,7 +87,7 @@ const Profile = () => {
             <div className="flex flex-wrap mt-6 max-w-6xl">
               {
                 posts.filter((post)=>post.image_urls.length > 0).map((post)=>(
-                  <>
+                  <React.Fragment key={post._id}>
                     {post.image_urls.map((image, index)=>(
                       <Link
                         target='_blank'
@@ -68,14 +95,14 @@ const Profile = () => {
                         key={index}
                         className='relative group'
                       >
-                        <img src={image} className='w-64 aspect-video object-cover' />
+                        <img src={image} alt="post media" className='w-64 aspect-video object-cover' />
                         <p className='absolute bottom-2 right-2 text-xs p-1 px-3 backdrop-blur-xl text-white opacity-0 group-hover:opacity-100 transition duration-300 bg-black/50 rounded'>
                           Posted {moment(post.createdAt).fromNow()}
                         </p>
                       </Link>
 
                     ))}
-                  </>
+                  </React.Fragment>
                 ))
               }
             </div>
