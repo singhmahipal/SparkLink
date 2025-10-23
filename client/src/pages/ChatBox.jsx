@@ -4,13 +4,13 @@ import { ImageIcon, SendHorizonal } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { useDispatch, useSelector } from 'react-redux';
-import api from '../api/axios';
-import { addMessages, fetchMessages, resetMessages } from '../features/messages/messagesSlice';
+import api from '../api/axios.js';
+import { addMessages, fetchMessages, resetMessages } from '../features/messages/messagesSlice.js';
 import toast from 'react-hot-toast';
 
 const ChatBox = () => {
 
-  const messages = dummyMessagesData;
+  const messages = useSelector((state) => state.messages.messages) || [];
   const {userId} = useParams();
   const {getToken} = useAuth();
   const dispatch = useDispatch();

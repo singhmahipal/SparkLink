@@ -77,7 +77,7 @@ userRouter.post('/follow', protect, followUser);
 userRouter.post('/unfollow', protect, unfollowUser);
 userRouter.post('/connect', protect, sendConnectionRequest);
 userRouter.post('/accept', protect, acceptConnectionRequest);
-userRouter.post('/connections', protect, getUserConnections);
+userRouter.get('/connections', protect, getUserConnections);
 userRouter.post("/profiles", getUserProfiles);
 userRouter.get('/recent-messages', protect, getUserRecentMessages);
 

@@ -4,7 +4,7 @@ const userSchema = new mongoose.Schema({
     _id: {type: String, required: true},
     email: {type: String, required: true},
     full_name: {type: String, required: true},
-    username: {type: String, unique: true},
+    username: {type: String}, 
     bio: {type: String, default: 'hey there! I am using sparklink.'},
     profile_picture: {type: String, default: ''},
     cover_photo: {type: String, default: ''},
@@ -13,6 +13,13 @@ const userSchema = new mongoose.Schema({
     following: [{type: String, ref: 'User'}],
     connections: [{type: String, ref: 'User'}],
 }, {timestamps: true, minimize: false});
+
+// Add indexes ONLY using schema.index() to avoid duplicates
+userSchema.index({ email: 1 });
+userSchema.index({ username: 1 }, { unique: true, sparse: true }); 
+userSchema.index({ connections: 1 });
+userSchema.index({ followers: 1 });
+userSchema.index({ following: 1 });
 
 const User = mongoose.model('User', userSchema);
 

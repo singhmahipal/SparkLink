@@ -13,23 +13,35 @@ const Connections = () => {
   const {getToken} = useAuth();
   const dispatch = useDispatch();
 
-  const {connections, pendingConnections, followers, following} = useSelector((state=>state.connections))
+  const {connections, pendingConnections, followers, following, loading, error} = useSelector((state) => state.connections);
+
+  // Debug log
+  useEffect(() => {
+    console.log('🔍 Current state:', {
+      connections: connections?.length,
+      pendingConnections: pendingConnections?.length,
+      followers: followers?.length,
+      following: following?.length
+    });
+  }, [connections, pendingConnections, followers, following]);
 
   const dataArray = [
-    { id: 'followers', label: 'Followers', value: followers, icon: Users },
-    { id: 'following', label: 'Following', value: following, icon: UserCheck },
-    { id: 'pending', label: 'Pending', value: pendingConnections, icon: UserRoundPen },
-    { id: 'connections', label: 'Connections', value: connections, icon: UserPlus },
+    { id: 'followers', label: 'Followers', value: followers || [], icon: Users },
+    { id: 'following', label: 'Following', value: following || [], icon: UserCheck },
+    { id: 'pending', label: 'Pending', value: pendingConnections || [], icon: UserRoundPen },
+    { id: 'connections', label: 'Connections', value: connections || [], icon: UserPlus },
   ];
 
   const handleUnfollow = async (userId) => {
     try {
+      const token = await getToken();
       const {data} = await api.post('/api/user/unfollow', {id: userId}, {
-        headers: {Authorization: `Bearer ${await getToken()}`}
-      })
+        headers: {Authorization: `Bearer ${token}`}
+      });
+      
       if (data.success) {
         toast.success(data.message);
-        dispatch(fetchConnections(await getToken()))
+        dispatch(fetchConnections(token));
       } else {
         toast(data.message);
       }
@@ -40,12 +52,14 @@ const Connections = () => {
 
   const acceptConnection = async (userId) => {
     try {
+      const token = await getToken();
       const {data} = await api.post('/api/user/accept', {id: userId}, {
-        headers: {Authorization: `Bearer ${await getToken()}`}
-      })
+        headers: {Authorization: `Bearer ${token}`}
+      });
+      
       if (data.success) {
         toast.success(data.message);
-        dispatch(fetchConnections(await getToken()))
+        dispatch(fetchConnections(token));
       } else {
         toast(data.message);
       }
@@ -54,11 +68,19 @@ const Connections = () => {
     }
   }
 
-  useEffect(()=>{
-    getToken().then((token)=> {
-      dispatch(fetchConnections(token));
-    })
-  }, []);
+  useEffect(() => {
+    const loadConnections = async () => {
+      try {
+        const token = await getToken();
+        console.log('🚀 Fetching connections with token:', token ? 'exists' : 'missing');
+        dispatch(fetchConnections(token));
+      } catch (error) {
+        console.error('❌ Error getting token:', error);
+      }
+    };
+    
+    loadConnections();
+  }, [dispatch, getToken]); // Added dependencies
 
   const activeTabData = dataArray.find((item) => item.id === currentTab);
 
@@ -71,6 +93,20 @@ const Connections = () => {
           <p className="text-slate-600">Manage your network and discover new connections</p>
         </div>
 
+        {/* Loading State */}
+        {loading && (
+          <div className="text-center py-8">
+            <p className="text-slate-600">Loading connections...</p>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+            Error: {error}
+          </div>
+        )}
+
         {/* Stats */}
         <div className="mb-8 flex flex-wrap gap-6">
           {dataArray.map((item) => (
@@ -78,7 +114,7 @@ const Connections = () => {
               key={item.id}
               className="flex flex-col items-center justify-center gap-1 border h-20 w-40 border-gray-200 bg-white shadow rounded-md"
             >
-              <b>{item.value.length}</b>
+              <b>{item.value?.length || 0}</b>
               <p className="text-slate-600">{item.label}</p>
             </div>
           ))}
@@ -102,7 +138,13 @@ const Connections = () => {
 
         {/* User Cards */}
         <div className="flex flex-wrap gap-6 mt-6">
-          {activeTabData?.value.map((user) => (
+          {activeTabData?.value?.length === 0 && !loading && (
+            <div className="w-full text-center py-8 text-slate-500">
+              No {currentTab} found
+            </div>
+          )}
+          
+          {activeTabData?.value?.map((user) => (
             <div
               key={user._id}
               className="w-full sm:max-w-md flex gap-5 p-6 bg-white shadow rounded-md"
@@ -116,7 +158,7 @@ const Connections = () => {
                 <p className="font-medium text-slate-700">{user.full_name}</p>
                 <p className="text-slate-500">@{user.username}</p>
                 <p className="text-sm text-gray-600">
-                  {user.bio.length > 30 ? `${user.bio.slice(0, 30)}...` : user.bio}
+                  {user.bio?.length > 30 ? `${user.bio.slice(0, 30)}...` : user.bio}
                 </p>
 
                 <div className="flex max-sm:flex-col gap-2 mt-4">
@@ -128,13 +170,13 @@ const Connections = () => {
                   </button>
 
                   {currentTab === 'following' && (
-                    <button onClick={()=> handleUnfollow(user._id)} className="w-full p-2 text-sm rounded bg-slate-100 hover:bg-sky-200 text-black active:scale-95 transition cursor-pointer">
+                    <button onClick={() => handleUnfollow(user._id)} className="w-full p-2 text-sm rounded bg-slate-100 hover:bg-sky-200 text-black active:scale-95 transition cursor-pointer">
                       Unfollow
                     </button>
                   )}
 
                   {currentTab === 'pending' && (
-                    <button onClick={()=>acceptConnection(user._id)} className="w-full p-2 text-sm rounded bg-slate-100 hover:bg-sky-200 text-black active:scale-95 transition cursor-pointer">
+                    <button onClick={() => acceptConnection(user._id)} className="w-full p-2 text-sm rounded bg-slate-100 hover:bg-sky-200 text-black active:scale-95 transition cursor-pointer">
                       Accept
                     </button>
                   )}

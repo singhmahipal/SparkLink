@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const storySchema = new mongoose.Schema({
     user: {
-        type: String,  // CHANGED FROM ObjectId to String to match User model
+        type: String,
         ref: 'User',
         required: true
     },
@@ -24,21 +24,20 @@ const storySchema = new mongoose.Schema({
         default: '#4f46e5'
     },
     views: [{
-        type: String,  // CHANGED FROM ObjectId to String
+        type: String,
         ref: 'User'
     }],
     expires_at: {
         type: Date,
-        default: () => new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
-        index: { expires: 0 } // TTL index to auto-delete after expiration
+        default: () => new Date(Date.now() + 24 * 60 * 60 * 1000)  
     }
 }, { 
     timestamps: true 
 });
 
-// Index for efficient querying
+// Add all indexes using schema.index() to avoid duplicates
 storySchema.index({ user: 1, createdAt: -1 });
-storySchema.index({ expires_at: 1 });
+storySchema.index({ expires_at: 1 }, { expireAfterSeconds: 0 }); 
 
 const Story = mongoose.model('Story', storySchema);
 

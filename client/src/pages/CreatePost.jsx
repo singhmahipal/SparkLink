@@ -19,33 +19,43 @@ const CreatePost = () => {
 
   const handleSubmit = async () => {
     if (!images.length && !content) {
-      return toast.error('please add at least one image or text');
+      toast.error('Please add at least one image or text');
+      return;
     }
-    setLoading(true);
 
-    const postType = images.length && content ? 'text_with_image' : images.length ? 'image' : 'text'
+    const postType = images.length && content ? 'text_with_image' : images.length ? 'image' : 'text';
 
     try {
+      setLoading(true);
+      
       const formData = new FormData();
-      formData.append('content', content);
+      formData.append('content', content || ''); // Ensure it's never undefined
       formData.append('post_type', postType);
-      images.map((image) => {
-        formData.append('images', image)
-      })
+      
+      images.forEach((image) => {
+        formData.append('images', image);
+      });
 
-      const {data} = await api.post('/api/post/add', formData, {headers: {Authorization: `Bearer ${await getToken()}`}})
+      const {data} = await api.post('/api/post/add', formData, {
+        headers: {
+          Authorization: `Bearer ${await getToken()}`
+        }
+      });
 
       if (data.success) {
+        toast.success('Post created successfully!');
+        setContent('');
+        setImages([]);
         navigate('/');
       } else {
-        console.log(data.message);
-        throw new Error(data.message);
+        toast.error(data.message || 'Failed to create post');
       }
     } catch (error) {
-      console.log(error.message);
-      throw new Error(error.message);
+      console.error('Post creation error:', error);
+      toast.error(error.response?.data?.message || 'Failed to create post');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false)
   }
 
   return (
@@ -69,7 +79,12 @@ const CreatePost = () => {
           </div>
 
           {/* text area */}
-          <textarea className="w-full resize-none max-h-20 mt-4 text-sm outline-none placeholder-gray-400" placeholder="what's happening?" onChange={(e)=>setContent(e.target.value)} value={content} />
+          <textarea 
+            className="w-full resize-none max-h-20 mt-4 text-sm outline-none placeholder-gray-400" 
+            placeholder="what's happening?" 
+            onChange={(e)=>setContent(e.target.value)} 
+            value={content} 
+          />
           
           {/* images */}
           {
@@ -87,20 +102,26 @@ const CreatePost = () => {
 
           {/* bottom bar */}
           <div className="flex items-center justify-between pt-3 border-t border-gray-300">
-            <label htmlFor="images" className='flex items-center gap-2 text-sm text-gray-500 hover:text-gray- transition cursor-pointer'>
+            <label htmlFor="images" className='flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition cursor-pointer'>
               <Image className='size-6' /> 
             </label>
 
-            <input type="file" id='images' accept='image/*' hidden multiple onChange={(e)=>setImages([...images, ...e.target.files])} />
+            <input 
+              type="file" 
+              id='images' 
+              accept='image/*' 
+              hidden 
+              multiple 
+              onChange={(e)=>setImages([...images, ...e.target.files])} 
+            />
 
-            <button disabled={loading} onClick={()=>toast.promise(
-              handleSubmit(),
-              {
-                loading: 'uploading...',
-                success: <p>Post added</p>,
-                error: <p>Post not added</p>
-              }
-            )} className="text-sm bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-indigo-700 active:scale-95 transition text-white font-medium px-8 py-2 rounded-md cursor-pointer">Publish Post</button>
+            <button 
+              disabled={loading} 
+              onClick={handleSubmit}
+              className="text-sm bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-indigo-700 active:scale-95 transition text-white font-medium px-8 py-2 rounded-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Uploading...' : 'Publish Post'}
+            </button>
           </div>
         </div>
       </div>

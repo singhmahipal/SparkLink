@@ -52,11 +52,17 @@ const App = () => {
           dispatch(addMessages(message))
           
         } else {
-          toast.custom(()=>(
+          toast.custom((t)=>( // FIXED: Added 't' parameter
             <Notification t={t} message={message} />
           ), {position: 'bottom-right'})
         }
       }
+
+      eventSource.onerror = (error) => {
+        console.error('SSE Error:', error);
+        eventSource.close();
+      }
+
       return ()=>{
         eventSource.close();
       }

@@ -91,6 +91,49 @@ const uploadPostConfig = multer({
     }
 });
 
+// ========== MESSAGE IMAGE UPLOAD ========== ADD THIS
+const uploadMessageConfig = multer({
+    storage,
+    limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB limit
+        files: 1 // Only 1 image per message
+    },
+    fileFilter: (req, file, cb) => {
+        console.log('Message upload - fieldname:', file.fieldname);
+        
+        // Only allow 'image' field for message uploads
+        if (file.fieldname !== 'image') {
+            return cb(new Error(`Invalid field name: ${file.fieldname}. Only 'image' is allowed for messages.`));
+        }
+        
+        imageFileFilter(req, file, cb);
+    }
+});
+
+// ========== STORY UPLOAD ========== 
+const uploadStoryConfig = multer({
+    storage,
+    limits: {
+        fileSize: 10 * 1024 * 1024, // 10MB limit for stories (videos can be larger)
+        files: 1 // Only 1 media file per story
+    },
+    fileFilter: (req, file, cb) => {
+        console.log('Story upload - fieldname:', file.fieldname);
+        
+        // Only allow 'media' field for story uploads
+        if (file.fieldname !== 'media') {
+            return cb(new Error(`Invalid field name: ${file.fieldname}. Only 'media' is allowed for stories.`));
+        }
+        
+        // Allow both images and videos for stories
+        if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image and video files are allowed for stories!'), false);
+        }
+    }
+});
+
 // Export different upload configurations
 export const upload = uploadUserConfig;
 export const uploadAny = uploadUserConfig.any();
@@ -98,7 +141,15 @@ export const uploadAny = uploadUserConfig.any();
 // Export post-specific upload middleware
 export const uploadPostImages = uploadPostConfig;
 
+// Export message-specific upload middleware ADD THIS
+export const uploadMessageImage = uploadMessageConfig;
+
 // Optional: Export individual middleware functions
 export const uploadSingleProfile = uploadUserConfig.single('profile');
 export const uploadSingleCover = uploadUserConfig.single('cover');
 export const uploadMultiplePostImages = uploadPostConfig.array('images', 5);
+export const uploadSingleMessageImage = uploadMessageConfig.single('image'); // ADD THIS
+
+// Export story-specific upload middleware
+export const uploadStoryMedia = uploadStoryConfig;
+export const uploadSingleStoryMedia = uploadStoryConfig.single('media');

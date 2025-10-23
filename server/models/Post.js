@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const postSchema = new mongoose.Schema({
     user: {
-        type: String,  // String, not ObjectId
+        type: String,
         ref: 'User',
         required: true
     },
@@ -19,12 +19,12 @@ const postSchema = new mongoose.Schema({
         required: true
     },
     likes_count: [{
-        type: String,  // String, not ObjectId
+        type: String,
         ref: 'User'
     }],
     comments: [{
         user: {
-            type: String,  // String, not ObjectId
+            type: String,
             ref: 'User'
         },
         content: String,
@@ -38,6 +38,7 @@ const postSchema = new mongoose.Schema({
 });
 
 postSchema.index({ user: 1, createdAt: -1 });
+postSchema.index({ createdAt: -1 }); // For feed queries
 
 const Post = mongoose.model('Post', postSchema);
 

@@ -2,12 +2,12 @@ import mongoose from "mongoose";
 
 const connectionSchema = new mongoose.Schema({
     from_user_id: {
-        type: String,  // String, not ObjectId
+        type: String,
         ref: 'User',
         required: true
     },
     to_user_id: {
-        type: String,  // String, not ObjectId
+        type: String,
         ref: 'User',
         required: true
     },
@@ -26,6 +26,7 @@ const connectionSchema = new mongoose.Schema({
 
 connectionSchema.index({ from_user_id: 1, to_user_id: 1 });
 connectionSchema.index({ to_user_id: 1, status: 1 });
+connectionSchema.index({ from_user_id: 1, created_at: -1 });  
 
 const Connection = mongoose.model('Connection', connectionSchema);
 
